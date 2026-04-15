@@ -171,23 +171,40 @@ body {
     </div>
 </div>
 
-<div class="status-bar" id="statusBar">Telegram WebApp 연결됨</div>
+<div class="status-bar" id="statusBar">초기화 중...</div>
 
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
+const statusBar = document.getElementById('statusBar');
+
+// 디버그: WebApp 환경 확인
+const initData = tg.initData;
+const platform = tg.platform;
+if (!initData) {
+    statusBar.textContent = '[' + platform + '] initData 없음 - 봇 채팅의 키보드 버튼으로 열어야 sendData 가능';
+    statusBar.style.color = '#f44336';
+} else {
+    statusBar.textContent = '[' + platform + '] WebApp 연결됨';
+}
+
 let selectedServer = '';
 
 function send(action, extra) {
     const data = { action: action };
     if (extra) Object.assign(data, extra);
+    const jsonStr = JSON.stringify(data);
+
+    statusBar.textContent = '전송 중: ' + jsonStr;
+    statusBar.style.color = '#FF9800';
 
     try {
-        tg.sendData(JSON.stringify(data));
+        tg.sendData(jsonStr);
     } catch (e) {
-        document.getElementById('statusBar').textContent = '전송 실패: ' + e.message;
+        statusBar.textContent = 'sendData 실패: ' + e.message;
+        statusBar.style.color = '#f44336';
     }
 }
 
