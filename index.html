@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DBPatcher</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--tg-theme-bg-color, #1a1a2e);
+    color: var(--tg-theme-text-color, #eee);
+    padding: 12px;
+    min-height: 100vh;
+}
+.header {
+    text-align: center;
+    padding: 8px 0 16px;
+    font-size: 18px;
+    font-weight: 600;
+}
+.section {
+    margin-bottom: 16px;
+}
+.section-title {
+    font-size: 13px;
+    color: var(--tg-theme-hint-color, #888);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding-left: 4px;
+}
+.btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.btn-grid.single { grid-template-columns: 1fr; }
+.btn {
+    padding: 14px 12px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.1s;
+    text-align: center;
+    background: var(--tg-theme-button-color, #3390ec);
+    color: var(--tg-theme-button-text-color, #fff);
+}
+.btn:active { transform: scale(0.96); opacity: 0.8; }
+.btn.info { background: #2196F3; }
+.btn.success { background: #4CAF50; }
+.btn.warning { background: #FF9800; }
+.btn.danger { background: #f44336; }
+.btn.secondary {
+    background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+    color: var(--tg-theme-text-color, #eee);
+}
+.btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+.btn .label { font-size: 13px; }
+
+/* Server action panel */
+.server-panel {
+    display: none;
+    margin-top: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+}
+.server-panel.active { display: block; }
+.server-panel h3 { margin-bottom: 12px; font-size: 15px; }
+.server-btns { display: flex; gap: 8px; margin-bottom: 8px; }
+.server-btns .btn { flex: 1; padding: 10px; font-size: 14px; }
+.close-btn {
+    margin-top: 8px;
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--tg-theme-hint-color, #555);
+    color: var(--tg-theme-hint-color, #888);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.status-bar {
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    color: var(--tg-theme-hint-color, #888);
+    margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">DBPatcher</div>
+
+<!-- 모니터링 -->
+<div class="section">
+    <div class="section-title">모니터링</div>
+    <div class="btn-grid">
+        <button class="btn info" onclick="send('status')">
+            <span class="icon">🔍</span>
+            <span class="label">서버 상태</span>
+        </button>
+        <button class="btn info" onclick="send('ccu')">
+            <span class="icon">👥</span>
+            <span class="label">동시접속자</span>
+        </button>
+        <button class="btn secondary" onclick="send('patchtime')">
+            <span class="icon">🕐</span>
+            <span class="label">패치 시간</span>
+        </button>
+        <button class="btn secondary" onclick="send('diff')">
+            <span class="icon">📝</span>
+            <span class="label">변경사항</span>
+        </button>
+    </div>
+</div>
+
+<!-- 로그 -->
+<div class="section">
+    <div class="section-title">로그</div>
+    <div class="btn-grid">
+        <button class="btn secondary" onclick="send('logs', {server:'PHONE'})">
+            <span class="icon">📄</span>
+            <span class="label">PHONE 로그</span>
+        </button>
+        <button class="btn secondary" onclick="send('logs', {server:'PHONE2'})">
+            <span class="icon">📄</span>
+            <span class="label">PHONE2 로그</span>
+        </button>
+    </div>
+</div>
+
+<!-- DB 패치 -->
+<div class="section">
+    <div class="section-title">DB 패치</div>
+    <div class="btn-grid single">
+        <button class="btn success" onclick="send('patch')">
+            <span class="icon">🗄️</span>
+            <span class="label">DB 패치 (시트 선택)</span>
+        </button>
+    </div>
+</div>
+
+<!-- 서버 관리 -->
+<div class="section">
+    <div class="section-title">서버 관리</div>
+    <div class="btn-grid">
+        <button class="btn warning" onclick="showServerPanel('PHONE')">
+            <span class="icon">📱</span>
+            <span class="label">PHONE</span>
+        </button>
+        <button class="btn warning" onclick="showServerPanel('PHONE2')">
+            <span class="icon">📱</span>
+            <span class="label">PHONE2</span>
+        </button>
+    </div>
+
+    <div id="serverPanel" class="server-panel">
+        <h3 id="serverPanelTitle"></h3>
+        <div class="server-btns">
+            <button class="btn success" id="btnBuild" onclick="sendServerAction('build')">빌드</button>
+            <button class="btn warning" id="btnDeploy" onclick="sendServerAction('deploy')">배포</button>
+            <button class="btn danger" id="btnSwitch" onclick="sendServerAction('switch')">전환</button>
+        </div>
+        <button class="close-btn" onclick="hideServerPanel()">닫기</button>
+    </div>
+</div>
+
+<div class="status-bar" id="statusBar">Telegram WebApp 연결됨</div>
+
+<script>
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+let selectedServer = '';
+
+function send(action, extra) {
+    const data = { action: action };
+    if (extra) Object.assign(data, extra);
+
+    try {
+        tg.sendData(JSON.stringify(data));
+    } catch (e) {
+        document.getElementById('statusBar').textContent = '전송 실패: ' + e.message;
+    }
+}
+
+function showServerPanel(server) {
+    selectedServer = server;
+    document.getElementById('serverPanelTitle').textContent = server + ' 서버';
+    document.getElementById('serverPanel').classList.add('active');
+}
+
+function hideServerPanel() {
+    document.getElementById('serverPanel').classList.remove('active');
+    selectedServer = '';
+}
+
+function sendServerAction(action) {
+    if (!selectedServer) return;
+    send(action, { server: selectedServer });
+}
+</script>
+
+</body>
+</html>
